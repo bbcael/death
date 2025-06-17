@@ -647,16 +647,17 @@ y = y(c3~="Mass movement (wet)"); m = m(c3~="Mass movement (wet)"); r1 = r1(c3~=
 c = zeros(size(c3)); c(c3=="Flood") = 1; c(c3=="Storm") = 2; clear c3;
 c = c(r1~="Oceania"); m = m(r1~="Oceania"); d = d(r1~="Oceania"); y = y(r1~="Oceania"); r2 = r2(r1~="Oceania"); r1 = r1(r1~="Oceania"); 
 % only look at 30+ deaths: 95% of deaths
-y = y(d>29.9); m = m(d>29.9); r2 = r2(d>29.9); r1 = r1(d>29.9); c = c(d>29.9); d = d(d>29.9); 
 y = y-1988;
 r = zeros(size(r1)); r(r2=="Latin America and the Caribbean") = 3; r(r1=="Europe") = 2; r(r2=="Northern America") = 4; r(r1=="Asia") = 1;
 clear r1 r2;
 y = y(r==1 & c>0); d = d(r==1 & c>0); clear r m c;
+yl = y(d<30); dl = d(d<30);
+y = y(d>29.9); d = d(d>29.9); pl = asiapop(yl+1)';
 D = sum(d);
 pop = asiapop(y+1)'; clear asiapop; % to add exposure to counterfactual
 [phat,pci] = mle(d-29.9,'distribution','gp');
 nb = 10000; % bootstrap iterations
-for i = 5299:nb;
+for i = 1:nb;
     ib = randsample(length(y),length(y),true);
     db = d(ib);
     yb = y(ib);
@@ -664,10 +665,11 @@ for i = 5299:nb;
     [p,pci] = mle(db-29.9,'pdf',@(x,a,b,c)gppdf(x,a,abs(c+b.*yb)),'Start',[phat(1) 0 phat(2)]);
     vul = p(3)./(p(3)+p(2).*yb); % to add vulnerability to counterfactual
     D_alt(i) = sum(d.*pop.*vul);
+    dlb = dl.*(p(3)./(p(3)+p(2).*yl)).*pl;
+    Dl(i) = sum(dlb(dlb>29.9)); % deaths from events that cause 30+ deaths that wouldn't've otherwise
     i
 end
-
-%%
+D_alt = D_alt+Dl;
 [Y,X] = ksdensity(D_alt,min(D_alt):1e4:max(D_alt));
 p2 = plot(X,smooth(Y),'linewidth',3,'color',[.5 .05 .5]);
 hold on;
